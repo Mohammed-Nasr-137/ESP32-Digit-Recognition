@@ -107,5 +107,11 @@ model.h
 alignas(16) const unsigned char model_tflite[]
 ```
 
+## Sample Results
+
+![Digit 0](images/0.jpeg)
+![Digit 2](images/2(1).jpeg)
+![Digit 6](images/6.jpeg)
+![Digit 9](images/9.jpeg)
 
 
