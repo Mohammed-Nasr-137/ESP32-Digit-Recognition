@@ -1,7 +1,7 @@
 # ESP32-Digit-Recognition
 An on-edge OCR system running on ESP32. This project classifies handwritten digits (0-9) locally using a custom quantized INT8 Micro-CNN deployed with TensorFlow Lite for Microcontrollers (TFLM), achieving < 8 ms inference latency with a 3.1 KB static memory footprint.
 
-![System Architecture Diagram](images/System Diagram.png)
+![System Architecture Diagram](images/System_Diagram.png)
 
 ## ⚡ Key Technical Features
 
@@ -54,19 +54,20 @@ http://192.168.4.1
 ## Neural Network Microarchitecture
 ![Model Architecture Diagram](images/ocr_model.png)
 
-LAYER               INPUT SHAPE       OUTPUT SHAPE      WEIGHT PARAMETERS
-───────────────────────────────────────────────────────────────────────────
-Conv2D (3x3, s=1)   [1, 16, 16, 1]    [1, 16, 16, 4]    (3*3*1 + 1)*4 = 40
-MaxPool2D (2x2)     [1, 16, 16, 4]    [1, 8, 8, 4]      0
-Conv2D (3x3, s=1)   [1, 8, 8, 4]      [1, 8, 8, 8]      (3*3*4 + 1)*8 = 296
-MaxPool2D (2x2)     [1, 8, 8, 8]      [1, 4, 4, 8]      0
-Flatten / Reshape   [1, 4, 4, 8]      [1, 128]          0
-FullyConnected      [1, 128]          [1, 10]           (128 + 1)*10 = 1,290
-───────────────────────────────────────────────────────────────────────────
-TOTAL:                                                  1,626 params (~1.6 KB INT8)
+## 🧠 Model Architecture
+
+| **Layer**         | **Input Shape**  | **Output Shape** |           **Weight Parameters** |
+| ----------------- | ---------------- | ---------------- | ------------------------------: |
+| Conv2D (3×3, s=1) | `[1, 16, 16, 1]` | `[1, 16, 16, 4]` |            `(3×3×1 + 1)×4 = 40` |
+| MaxPool2D (2×2)   | `[1, 16, 16, 4]` | `[1, 8, 8, 4]`   |                               0 |
+| Conv2D (3×3, s=1) | `[1, 8, 8, 4]`   | `[1, 8, 8, 8]`   |           `(3×3×4 + 1)×8 = 296` |
+| MaxPool2D (2×2)   | `[1, 8, 8, 8]`   | `[1, 4, 4, 8]`   |                               0 |
+| Flatten / Reshape | `[1, 4, 4, 8]`   | `[1, 128]`       |                               0 |
+| Fully Connected   | `[1, 128]`       | `[1, 10]`        |          `(128 + 1)×10 = 1,290` |
+| **TOTAL**         |                  |                  | **1,626 params (~1.6 KB INT8)** |
 
 
-Softmax was stripped for edge deployment to save memory and eliminates expensive runtime floating-point exponentials.
+Softmax was stripped for edge deployment to save memory and eliminate expensive runtime floating-point exponentials.
 
 
 ## Training Strategy, Domain Adaptation & Quantization Flow
@@ -80,18 +81,31 @@ Two datasets were used in this project:
 - Used for domain adaptation by running the raw images through the custom OpenCV pipeline to fine-tune the classification head on preprocessed camera-style handwriting.
 - Total size of 550 images split into 80%-20% train-test sets.
 
+## 🔄 Model Conversion & Deployment Pipeline
+
+```text
 PyTorch Model (.pth)
-         │ (torch.onnx.export)
+         │
+         │ torch.onnx.export
          ▼
 ONNX Graph (NCHW)
-         │ (onnx2tf: Transposes convolution filters to channels-last layout)
+         │
+         │ onnx2tf
+         │ Transposes convolution filters
+         │ to channels-last layout
          ▼
 TensorFlow SavedModel (NHWC)
-         │ (tf.lite.TFLiteConverter + Representative Dataset Calibration)
+         │
+         │ tf.lite.TFLiteConverter
+         │ + Representative Dataset Calibration
          ▼
 Full INT8 TFLite Model (.tflite)
-         │ (Hex-dump serializer)
+         │
+         │ Hex-dump serializer
          ▼
-model.h: alignas(16) const unsigned char model_tflite[]
+model.h
+alignas(16) const unsigned char model_tflite[]
+```
+
 
 
